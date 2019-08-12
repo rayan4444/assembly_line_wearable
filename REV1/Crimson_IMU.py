@@ -1,131 +1,153 @@
-# reference code: https://www.thepoorengineer.com/en/arduino-python-plot/
-
-import collections
-import struct
+# importing packages
 import time
-from threading import Thread
-
-import matplotlib.animation as animation
+from datetime import datetime
+import csv
+from icm20948 import ICM20948
 import matplotlib.pyplot as plt
-import serial
-import copy 
+import matplotlib.animation as animation
+
+#print warning
+print("""read-all.py
+Reads all ranges of movement: accelerometer, gyroscope and
+compass heading.
+Press Ctrl+C to exit!
+""")
+
+#create IMU object: this library only added I2C support, by default reads 0x68, I changed it to read 0x69
+imu = ICM20948()
+
+#create csv file to log sensor data
+#with open ("/home/pi/Desktop/Crimson/sensor_log.csv","a", newline="") as log:
+    #create an instance of csv writer
+    #csv_write = csv.writer(log)
+
+    #write header file
+    #csv_write.writerow(["Index","Timestamp", "Ax", "Ay", "Az", "Gx", "Gy", "Gz","Mx", "My", "Mz"])
+
+    #create index counter
+    #index = 0
+
+#set plotting parameters
+x_len = 200 #number of points to display
+accel_y_range= [-2, 2] #Y bounds for accelerometer plot
+gyro_y_range= [-500, 500] #Y bounds for gyro plot
+mag_y_range= [-100, 100] #Y bounds for magnetometer plot
+
+#create figure for plotting
+fig = plt.figure()
+ax1 = fig.add_subplot(3,1,1) #change later to add gyro and mag
+ax2= fig.add_subplot(3,1,2)
+ax3= fig.add_subplot(3,1,3)
 
 
-class serialPlot:
-    def __init__(
-        self, serialPort="COM11", serialBaud=115200, plotLength=100, dataNumBytes=2, numPlots=1):
-        self.port = serialPort
-        self.baud = serialBaud
-        self.plotMaxLength = plotLength
-        self.dataNumBytes = dataNumBytes
-        self.numPlots = numPlots
-        self.rawData = bytearray(numPlots*dataNumBytes)
-        self.dataType =None
-        if dataNumBytes == 2:
-            self.dataType = 'h'     # 2 byte integer
-        elif dataNumBytes == 4:
-            self.dataType = 'f'     # 4 byte float
-        self.data = []
-        for i in range(numPlots):   # give an array for each type of data and store them in a list
-            self.data.append(collections.deque([0] * plotLength, maxlen=plotLength))
-        self.isRun = True
-        self.isReceiving = False
-        self.thread = None
-        self.plotTimer = 0
-        self.previousTimer = 0
-        # self.csvData= []
+xs= list(range(0,x_len)) #xvalues
+axs= [0]*x_len
+ays= [0]*x_len
+azs= [0]*x_len
+gxs= [0]*x_len
+gys= [0]*x_len
+gzs= [0]*x_len
+mxs= [0]*x_len
+mys= [0]*x_len
+mzs= [0]*x_len
 
-        print(
-            "Trying to connect to: "
-            + str(serialPort)
-            + " at "
-            + str(serialBaud)
-            + " BAUD."
-        )
-        try:
-            self.serialConnection = serial.Serial(
-                port=serialPort, baudrate=serialBaud, timeout=4
-            )
+ax1.set_ylim(accel_y_range)
+ax2.set_ylim(gyro_y_range)
+ax3.set_ylim(mag_y_range)
 
-            print("Connected to " + str(serialPort) + " at " + str(serialBaud) + " BAUD.")
-        except:
-            print("Failed to connect")
+line_ax, = ax1.plot(xs, axs)# blank line to be animated  later
+line_ay, = ax1.plot(xs, ays)
+line_az, = ax1.plot(xs, azs)
+line_gx, = ax2.plot(xs, gxs)
+line_gy, = ax2.plot(xs, gys)
+line_gz, = ax2.plot(xs, gzs)
+line_mx, = ax3.plot(xs, mxs)
+line_my, = ax3.plot(xs, mys)
+line_mz, = ax3.plot(xs, mzs)
 
-    def readSerialStart(self):
-        if self.thread == None:
-            self.thread = Thread(target=self.backgroundThread)
-            self.thread.start()
-            # Block till we start receiving values
-            while self.isReceiving != True:
-                time.sleep(0.1)
+#plot labels
+ax1.set_title('Accelerometer')
+ax1.set_xlabel("Samples")
+ax1.set_ylabel('Accelerometer readings')
 
-    def getSerialData(self, frame, lines, lineValueText, lineLabel, timeText):
-        currentTimer = time.perf_counter()
-        self.plotTimer = int((currentTimer - self.previousTimer) * 1000)     # the first reading will be erroneous
-        self.previousTimer = currentTimer
-        timeText.set_text('Plot Interval = ' + str(self.plotTimer) + 'ms')
-        privateData = copy.deepcopy(self.rawData[:])    # so that the 3 values in our plots will be synchronized to the same sample time
-        for i in range(self.numPlots):
-            data = privateData[(i*self.dataNumBytes):(self.dataNumBytes + i*self.dataNumBytes)]
-            value,  = struct.unpack(self.dataType, data)
-            self.data[i].append(value)    # we get the latest data point and append it to our array
-            lines[i].set_data(range(self.plotMaxLength), self.data[i])
-            lineValueText[i].set_text('[' + lineLabel[i] + '] = ' + str(value))
-        # self.csvData.append([self.data[0][-1], self.data[1][-1], self.data[2][-1]])
+ax2.set_title('Gyroscope')
+ax2.set_xlabel("Samples")
+ax2.set_ylabel('Gyroscope readings')
 
-    def backgroundThread(self):
-        time.sleep(1.0)
-        self.serialConnection.reset_input_buffer()
-        while self.isRun:
-            self.serialConnection.readinto(self.rawData)
-            self.isReceiving = True
-            #print(self.rawData)
+ax3.set_title('Magnetometer')
+ax3.set_xlabel("Samples")
+ax3.set_ylabel('Magnetometer readings')
 
-    def close(self):
-        self.isRun = False
-        self.thread.join()
-        self.serialConnection.close()
-        print('Disconnected...')
-        # df = pd.DataFrame(self.csvData)
-        # df.to_csv('/home/rikisenia/Desktop/data.csv')
+fig.legend((line_ax,line_ay,line_az),('Ax','Ay','Az'), 'upper right')
+fig.legend((line_gx,line_gy,line_gz),('Gx','Gy','Gz'), 'center right')
+fig.legend((line_mx,line_my,line_mz),('Mx','My','Mz'), 'lower right')
 
-def main():
+#function called  periodically from FuncAnimation
+def animate(i, axs, ays, azs, gxs, gys, gzs, mxs, mys, mzs):
 
-    portName= "COM11"
-    baudRate = 115200
-    maxPlotLength = 100
-    dataNumBytes = 2  # use 4 if sending float/double data typer from arduino
-    numPlots = 3  
-    s = serialPlot(portName, baudRate, maxPlotLength, dataNumBytes, numPlots)   # initializes all required variables
-    s.readSerialStart()                                               # starts background thread
- 
-    # plotting
-    pltInterval = 50  # Period at whihc the plot animation updates [ms]
-    xmin = 0
-    xmax = maxPlotLength
-    ymin = -(1)
-    ymax = 1000
-    fig = plt.figure()
-    ax = plt.axes(xlim=(xmin, xmax), ylim=(float(ymin - (ymax - ymin) / 10), float(ymax + (ymax - ymin) / 10)))
-    ax.set_title("arduino Analog Read")
-    ax.set_xlabel("time")
-    ax.set_ylabel("AnalogRead Value")
+    #read IMU data
+    mx, my, mz = imu.read_magnetometer_data()
+    ax, ay, az, gx, gy, gz = imu.read_accelerometer_gyro_data()
 
-    lineLabel = ['X', 'Y', 'Z']
-    style = ['r-', 'c-', 'b-']  # linestyles for the different plots
-    timeText = ax.text(0.70, 0.95, '', transform=ax.transAxes)
-    lines = []
-    lineValueText = []
-    for i in range(numPlots):
-        lines.append(ax.plot([], [], style[i], label=lineLabel[i])[0])
-        lineValueText.append(ax.text(0.70, 0.90-i*0.05, '', transform=ax.transAxes))
-    anim = animation.FuncAnimation(fig, s.getSerialData, fargs=(lines, lineValueText, lineLabel, timeText), interval=pltInterval)    # fargs has to be a tuple
- 
-    plt.legend(loc="upper left")
-    plt.show()
- 
-    s.close()
+    #increment index counter
+    #index= index+1
 
+    #save IMU data in a row
+    #log_row=[index, datetime.now().strftime("%Y-%m-%d %H:%M:%S"),ax, ay, az, gx, gy, gz, mx, my, mz]
 
-if __name__ == "__main__":
-    main()
+    #write row to csv file
+    #csv_write.writerow(log_row)
+
+    #print values out to terminal
+    print("""
+Accel: {:05.2f} {:05.2f} {:05.2f}
+Gyro:  {:05.2f} {:05.2f} {:05.2f}
+Mag:   {:05.2f} {:05.2f} {:05.2f}""".format(
+        ax, ay, az, gx, gy, gz, mx, my, mz
+        ))
+
+    #append values to list for plotting
+    axs.append(ax)
+    ays.append(ay)
+    azs.append(az)
+    gxs.append(gx)
+    gys.append(gy)
+    gzs.append(gz)
+    mxs.append(mx)
+    mys.append(my)
+    mzs.append(mz)
+
+    #limit the y lists to set number of items
+    axs=axs[-x_len:]
+    ays=ays[-x_len:]
+    azs=azs[-x_len:]
+    gxs=gxs[-x_len:]
+    gys=gys[-x_len:]
+    gzs=gzs[-x_len:]
+    mxs=mxs[-x_len:]
+    mys=mys[-x_len:]
+    mzs=mzs[-x_len:]
+
+    #update line with new Y values
+    line_ax.set_ydata(axs)
+    line_ay.set_ydata(ays)
+    line_az.set_ydata(azs)
+    line_gx.set_ydata(gxs)
+    line_gy.set_ydata(gys)
+    line_gz.set_ydata(gzs)
+    line_mx.set_ydata(mxs)
+    line_my.set_ydata(mys)
+    line_mz.set_ydata(mzs)
+
+    #function output
+    return line_ax, line_ay, line_az, line_gx, line_gy, line_gz, line_mx, line_my, line_mz
+
+#setup plot to call animation
+ani = animation.FuncAnimation(fig,
+    animate,
+    fargs=(axs, ays, azs, gxs, gys, gzs, mxs, mys, mzs,),
+    interval=10,
+    blit=True)
+
+plt.show()
+
