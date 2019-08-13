@@ -1,13 +1,11 @@
 # importing packages
 import time
-from datetime import datetime
-import csv
 from icm20948 import ICM20948
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 #print warning
-print("""read-all.py
+print("""Crimson_IMU_plot.py
 Reads all ranges of movement: accelerometer, gyroscope and
 compass heading.
 Press Ctrl+C to exit!

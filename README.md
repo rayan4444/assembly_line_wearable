@@ -16,5 +16,12 @@ Progress:
 - real time plotting: Done
 - recording to csv file: 
 - FFT: 
-- 
+
+
+## Files
+- Crimson_IMU_plot.py: real time 9-DoF IMU data plotting 
+- Crimson_IMU_log.py: save 30s of sensor data in a csv file 
+- Crimson_IMU_FFT.py: plot data from csv file and run FFT. Display FFT results 
+-  
+
 
