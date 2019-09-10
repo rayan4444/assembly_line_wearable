@@ -5,7 +5,7 @@ from scipy.io import wavfile
 
 # recording/logging duration (in seconds)
 # This number can be found from the Crimson_thresing_test.py file
-t = 10
+t = 40
 
 # load data
 ax = np.genfromtxt("ax.csv", delimiter=",")

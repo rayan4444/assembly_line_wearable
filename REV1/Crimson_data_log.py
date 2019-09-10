@@ -31,7 +31,7 @@ CHUNK = 1024
 FORMAT = pyaudio.paInt32
 CHANNELS = 1
 RATE = 44100
-RECORD_SECONDS = 10
+RECORD_SECONDS = 40
 WAVE_OUTPUT_FILENAME = "output.wav"
 
 # class to handle logging accelerometer data
@@ -155,9 +155,9 @@ imu_Thread = Thread(target=imu_1.run)
 imu_Thread.start()
 
 Exit = False  # Exit flag
-while t_run <= 10.0:
+while t_run <= 40.0:
 
-    if t_run > 15.0:
+    if t_run > 45.0:
         Exit = True  # Exit Program
 
 imu_1.terminate()
