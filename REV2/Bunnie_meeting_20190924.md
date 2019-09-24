@@ -20,5 +20,6 @@ Live counting with python: if you do live stream processing you need at least 2 
 
 vs 
 
-* ioT : (more potential problems having a whole server infrastructure, antenna/electrical interference etc….)> hidden costs. So if your team is not especially strong in IOT 
+* ioT : (more potential problems having a whole server infrastructure, antenna/electrical interference etc….)> hidden costs. So if your team is not especially strong in IOT going that route is not recommended. It might end up costing you a lot more than the self contained solution
+
 

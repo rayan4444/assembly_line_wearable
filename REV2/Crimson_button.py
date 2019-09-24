@@ -7,6 +7,8 @@ from board import SCL, SDA
 import busio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
+import Crimson_action_count
+import Crimson_data_log
 
 # Create the I2C interface for the screen
 i2c = busio.I2C(SCL, SDA)
@@ -70,35 +72,78 @@ try:
             print("Data Log Button pressed")
             GPIO.output(6, GPIO.HIGH)
             time.sleep(0.2)
-            str2 = "/home/pi/Desktop/Crimson/Crimson_data_log.py"
-            subprocess.call([str2])
+            # str2 = "/home/pi/Desktop/Crimson/Crimson_data_log.py"
+            # subprocess.call([str2])
+            # try:
+            Crimson_data_log.log()
+
+            # except Exception as e:
+            #     print("Exception raised: {}".format(e))
+            #     GPIO.output(6, GPIO.LOW)
+
+            #     # Draw a black filled box to clear the image.
+            #     draw.rectangle((0, 0, width, height), outline=0, fill=0)
+            #     # Display CLEARED label on screen
+            #     draw.text((x, top + 0), "Error", font=font, fill=255)
+            #     draw.text((x, top + 16), "Try Again", font=font, fill=255)
+            #     disp.image(image)
+            #     disp.show()
+            #     time.sleep(2)
 
         if input_state2 == False:
 
             print("Action Count Button Pressed")
             GPIO.output(5, GPIO.HIGH)
             time.sleep(0.2)
-            str1 = "/home/pi/Desktop/Crimson/Crimson_action_count.py"
-            subprocess.call([str1])
+            # str1 = "/home/pi/Desktop/Crimson/Crimson_action_count.py"
+            # subprocess.call([str1])
+            try:
+                Crimson_action_count.a_count()
+            except Exception as e:
+                print("Exception raised: {}".format(e))
+                GPIO.output(5, GPIO.LOW)
+
+                # Draw a black filled box to clear the image.
+                draw.rectangle((0, 0, width, height), outline=0, fill=0)
+                # Display CLEARED label on screen
+                draw.text((x, top + 0), "Error", font=font, fill=255)
+                draw.text((x, top + 16), "Try Again", font=font, fill=255)
+                disp.image(image)
+                disp.show()
+                time.sleep(2)
 
         if input_state3 == False:
             print("Clear Data Button pressed")
             time.sleep(0.2)
-            subprocess.call(["rm output.wav"], shell=True)
-            subprocess.call(["rm ax.csv"], shell=True)
-            subprocess.call(["rm ay.csv"], shell=True)
-            subprocess.call(["rm az.csv"], shell=True)
-            subprocess.call(["rm sensor_log.csv"], shell=True)
-            # Draw a black filled box to clear the image.
-            draw.rectangle((0, 0, width, height), outline=0, fill=0)
+            try:
+                subprocess.call(["rm /home/pi/Desktop/Crimson/output.wav"], shell=True)
+                subprocess.call(["rm /home/pi/Desktop/Crimson/ax.csv"], shell=True)
+                subprocess.call(["rm /home/pi/Desktop/Crimson/ay.csv"], shell=True)
+                subprocess.call(["rm /home/pi/Desktop/Crimson/az.csv"], shell=True)
+                subprocess.call(
+                    ["rm /home/pi/Desktop/Crimson/sensor_log.csv"], shell=True
+                )
+                # Draw a black filled box to clear the image.
+                draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
-            # Display RECORDING label on screen
-            draw.text((x, top + 0), "Cleared", font=font, fill=255)
-            disp.image(image)
-            disp.show()
-            GPIO.output(5, GPIO.LOW)
-            GPIO.output(6, GPIO.LOW)
-            time.sleep(2)
+                # Display CLEARED label on screen
+                draw.text((x, top + 0), "Cleared", font=font, fill=255)
+                disp.image(image)
+                disp.show()
+                GPIO.output(5, GPIO.LOW)
+                GPIO.output(6, GPIO.LOW)
+                time.sleep(2)
+
+            except Exception as e:
+                print("Exception raised: {}".format(e))
+                # Draw a black filled box to clear the image.
+                draw.rectangle((0, 0, width, height), outline=0, fill=0)
+                # Display CLEARED label on screen
+                draw.text((x, top + 0), "Error", font=font, fill=255)
+                draw.text((x, top + 10), "Try Again", font=font, fill=255)
+                disp.image(image)
+                disp.show()
+                time.sleep(2)
 
 
 except KeyboardInterrupt:
