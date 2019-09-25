@@ -225,7 +225,7 @@ def a_count():
     # represent the vibration from the drill/tool: all axes of the accelerometer should detect some vibration
     # To eliminate noise peaks from the averaging phase in step 1, we only consider an average peak valid if
     # it is detected by at least 2 sensors.
-    # we consider average peaks within 0.5s of each other to belong to the same motion
+    # we consider average peaks within 1s of each other to belong to the same motion
 
     # container for the loop
     valid_peaks = []
@@ -237,7 +237,7 @@ def a_count():
         for j in range(len(avg_peaks_ay)):
             d1 = 0
             d = avg_peaks_ax[i] - avg_peaks_ay[j]
-            if abs(d) <= 0.5:
+            if abs(d) <= 1:
                 d1 = 1
             for k in range(len(avg_peaks_az)):
                 d2 = 0

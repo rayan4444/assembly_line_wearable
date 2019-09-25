@@ -26,6 +26,7 @@ Crimson_button.py runs at boot and imports functions from Crimson_data_log.py an
 - Display breakout on the PCB doesn't match the module we purchsed so some reworking had to be done to be able to wire it properly 
 - A single python script that can be run from boot. It imports functions from two other python files. These functions are very similar to the REV1 code, a little has been done to optimise it. 
 - To view code outputs you can hook up a display to the pi or ssh into it (or use VNC). You can also uncomment print statements in the code to track the action countinfg process. 
+- [Tutorial to change microphone sensitivity](https://learn.adafruit.com/adafruit-i2s-mems-microphone-breakout/raspberry-pi-wiring-and-test)
 
 ## Hardware files
 Eagle files and gerber files for the Pi HAT
