@@ -2,3 +2,4 @@ venv
 .vscode
 build
 REV2/screen_test.py
+BT_IMU/Firmware/_build
