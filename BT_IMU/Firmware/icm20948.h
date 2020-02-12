@@ -81,11 +81,9 @@ GyroDlpfBandwidth _gyroBandwidth;
 
 
 //gyro bias estimation 
-double _gxbD, _gybD, _gzbD;
 float _gxb, _gyb, _gzb;
 
 // accel bias and scale factor estimation
-double _axbD, _aybD, _azbD;
 float _axmax, _aymax, _azmax;
 float _axmin, _aymin, _azmin;
 float _axb, _ayb, _azb;

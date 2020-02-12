@@ -63,7 +63,7 @@
 #include "nrf_drv_twi.h"
 #include "nrf_delay.h"
 #include "custom_board.h"
-
+#include "nrf_queue.h"
 #if defined (UART_PRESENT)
 #include "nrf_uart.h"
 #endif
@@ -77,38 +77,192 @@
 
 #include "icm20948.h"
 #include "crimson_sdcard.h"
+#include "MadgwickAHRS.h"
 
 #define ICM20948_ADDR 0x68
 
 #define UART_TX_BUF_SIZE                256                                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE                256                                         /**< UART RX buffer size. */
+#define QUEUE_SIZE                      3
 
+typedef enum arm_position{
+    UP_POSITION,
+    DOWN_POSITION,
+    OTHER_POSITION
+}arm_position;
+
+arm_position previous_position; 
+
+volatile bool log_available= false; 
 volatile bool new_data_ready = false;
+volatile uint32_t count=0;
 volatile bool m_xfer_done;
 #define TWI_INSTANCE_ID     0
 nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 
-#define OUR_SENSOR_TIMER_INTERVAL     APP_TIMER_TICKS(1000)     // 1000 ms intervals
-APP_TIMER_DEF(m_our_sensor_timer_id);
+#define IMU_SAMPLE_TIMER_INTERVAL     APP_TIMER_TICKS(100)     // 100 ms intervals 
+APP_TIMER_DEF(imu_sample_timer_id);
 
+float dt = 0.01; // time between two measurements 
+float ax_accumulator, ay_accumulator, az_accumulator, gx_accumulator, gy_accumulator, gz_accumulator; //moving average filter accumulators
 
-float event_time = 32.1;
-float event_type = 11;
+float angles[3]; // roll, pitch, yaw
+float event_time= 12.3;
+//circular buffer to store sensor data before running average filter
+//the queue will overflow when it is full 
+NRF_QUEUE_DEF(float, m_ax_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
+NRF_QUEUE_DEF(float, m_ay_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
+NRF_QUEUE_DEF(float, m_az_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
+NRF_QUEUE_DEF(float, m_gx_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
+NRF_QUEUE_DEF(float, m_gy_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
+NRF_QUEUE_DEF(float, m_gz_queue, QUEUE_SIZE, NRF_QUEUE_MODE_OVERFLOW);
 
-int16_t accX, accY, accZ; // to hold before conversion
-int16_t gyroX, gyroY, gyroZ;
-float accel_X, accel_Y, accel_Z; // to hold hte data after conversion 
-float gyro_X, gyro_Y, gyro_Z;
+//value to store the filtered sensor data 
+float f_ax, f_ay, f_az, f_gx, f_gy, f_gz;
+ 
+// calibration routine
+bool calibrate(){
+    // Turn on  LED configuration to indicate calibration (pink)
+    nrf_gpio_pin_clear(LED_R);
+    nrf_gpio_pin_clear(LED_B);
+
+    // initialize running average filter accumulators
+    for (int i=0; i<(QUEUE_SIZE-1); i++){
+        ICM20948_read();
+        ax_accumulator += _ax;
+        ay_accumulator += _ay;
+        az_accumulator += _az;
+        gx_accumulator += _gx;
+        gy_accumulator += _gy;
+        gz_accumulator += _gz;
+
+        //start filling up the queue
+        ret_code_t err_code = nrf_queue_push(&m_ax_queue, &_ax);
+        APP_ERROR_CHECK(err_code);
+        err_code = nrf_queue_push(&m_ay_queue, &_ay);
+        APP_ERROR_CHECK(err_code);
+        err_code = nrf_queue_push(&m_az_queue, &_az);
+        APP_ERROR_CHECK(err_code);
+        err_code = nrf_queue_push(&m_gx_queue, &_gx);
+        APP_ERROR_CHECK(err_code);
+        err_code = nrf_queue_push(&m_gy_queue, &_gy);
+        APP_ERROR_CHECK(err_code);
+        err_code = nrf_queue_push(&m_gz_queue, &_gz);
+        APP_ERROR_CHECK(err_code);
+
+        //keep a rough 10Hz sampling frequency 
+        nrf_delay_ms(10);
+    }
+
+    // determine initial gyro offset from average
+    _gxb=gx_accumulator/((float)QUEUE_SIZE-1.0);
+    _gyb=gy_accumulator/((float)QUEUE_SIZE-1.0);
+    _gzb= gz_accumulator/((float)QUEUE_SIZE-1.0);
+    
+    printf("gyro bias: x: %f, y: %f, z: %f \n", _gxb, _gyb, _gzb);
+    
+    //init position
+    previous_position = OTHER_POSITION;
+
+    //clear LEDs
+    nrf_delay_ms(1000);
+    nrf_gpio_pin_set(LED_R);
+    nrf_gpio_pin_set(LED_B);
+    NRF_LOG_INFO("calibration DONE!");
+
+    return 1;
+}
+
+// Moving Average filter 
+float moving_average(nrf_queue_t const * p_queue, float newest_value, float* accumulator){
+    //read all values in the queue
+    float m_average =0;
+    float oldest_value;
+    float acc = *accumulator;
+    
+   
+    // when the queue is full
+    if (nrf_queue_is_full(p_queue)){
+        //add the new value to to the sum 
+        
+        acc = acc + newest_value;
+        //divide by total size of queue
+        m_average = acc / ((float)QUEUE_SIZE);
+        
+        //remove oldest value
+        nrf_queue_pop(p_queue, &oldest_value);
+        acc = acc - oldest_value;
+
+    }
+    //update accumulator value 
+    *accumulator = acc;
+    return m_average;
+}
+
+void process_position(float  roll, float pitch, float yaw){
+    arm_position new_position; 
+
+    if (pitch <= -50.0){
+        // printf("down \t");
+        new_position = DOWN_POSITION;
+        // if the posiiton changed, log it 
+            if (new_position != previous_position){
+                log_available = true;
+                printf("DOWN\n");
+            }   
+    } else {
+        if ((pitch>=-25) ||(roll>=0.0)){
+            // printf("up \t");
+            new_position= UP_POSITION; 
+            // if the posiiton changed, log it 
+            if (new_position != previous_position){
+                log_available = true;
+                printf("UP\n");
+
+            }      
+        }else{
+            // printf("other \t");
+            new_position = OTHER_POSITION;
+        }
+    }
+    previous_position = new_position;
+}
 
 // timer event handler
 static void timer_timeout_sensor_handler(void * p_context)
 {
-  // Acquire get sensor data
-  // toggle flag
-  new_data_ready = true;
-  NRF_LOG_INFO("TIMER");
-}
+    //update sensor data 
+    ICM20948_read();
+   
+    //store data in a queue
+    ret_code_t err_code = nrf_queue_push(&m_ax_queue, &_ax);
+    APP_ERROR_CHECK(err_code);
+    err_code = nrf_queue_push(&m_ay_queue, &_ay);
+    APP_ERROR_CHECK(err_code);
+    err_code = nrf_queue_push(&m_az_queue, &_az);
+    APP_ERROR_CHECK(err_code);
+    err_code = nrf_queue_push(&m_gx_queue, &_gx);
+    APP_ERROR_CHECK(err_code);
+    err_code = nrf_queue_push(&m_gy_queue, &_gy);
+    APP_ERROR_CHECK(err_code);
+    err_code = nrf_queue_push(&m_gz_queue, &_gz);
+    APP_ERROR_CHECK(err_code);
 
+    //update running average filter
+    f_ax=moving_average(&m_ax_queue, _ax, &ax_accumulator);
+    f_ay=moving_average(&m_ay_queue, _ay, &ay_accumulator);
+    f_az=moving_average(&m_az_queue, _az, &az_accumulator);
+    f_gx=moving_average(&m_gx_queue, _gx, &gx_accumulator);
+    f_gy=moving_average(&m_gy_queue, _gy, &gy_accumulator);
+    f_gz=moving_average(&m_gz_queue, _gz, &gz_accumulator);
+    
+    // feed filtered data to Madgwick filter
+    Madgwick_updateIMU(f_gx,f_gy, f_gz, f_ax, f_ay, f_az);
+    computeAngles();
+
+    // toggle flag
+    new_data_ready = true;
+}
 
 /**@brief Function for initializing the timer module.
  */
@@ -117,7 +271,7 @@ static void timers_init(void)
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_create(&m_our_sensor_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_sensor_handler);
+    err_code = app_timer_create(&imu_sample_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_sensor_handler);
     APP_ERROR_CHECK(err_code);
 
 }
@@ -126,7 +280,7 @@ static void timers_init(void)
 */
 static void application_timers_start(void)
 {
-  app_timer_start(m_our_sensor_timer_id, OUR_SENSOR_TIMER_INTERVAL, NULL);
+    app_timer_start(imu_sample_timer_id, IMU_SAMPLE_TIMER_INTERVAL, NULL);
 }
 
 
@@ -199,7 +353,7 @@ void  writeRegister(uint8_t subAddress, uint8_t data)
     ret_code_t err_code;
     uint8_t reg[2] = {subAddress, data};
     err_code = nrf_drv_twi_tx(&m_twi, ICM20948_ADDR, reg, sizeof(reg), false);
-
+    nrf_delay_ms(1);
     APP_ERROR_CHECK(err_code);
     // while (m_xfer_done == false);
 }
@@ -260,13 +414,13 @@ static void power_management_init(void)
  *
  * @details If there is no pending log operation, then sleep until next the next event occurs.
  */
-static void idle_state_handle(void)
-{
-    if (NRF_LOG_PROCESS() == false)
-    {
-        nrf_pwr_mgmt_run();
-    }
-}
+// static void idle_state_handle(void)
+// {
+//     if (NRF_LOG_PROCESS() == false)
+//     {
+//         nrf_pwr_mgmt_run();
+//     }
+// }
 
 static void rgb_led_init(){
     nrf_gpio_cfg_output (LED_G);
@@ -277,18 +431,6 @@ static void rgb_led_init(){
     nrf_gpio_pin_set(LED_R);
     nrf_gpio_pin_set(LED_B);
 }
-
-// static void ping_address(uint8_t address){
-
-//     uint8_t sample_data;
-//     ret_code_t err_code = nrf_drv_twi_rx(&m_twi, address, &sample_data, sizeof(sample_data));
-//         if (err_code == NRF_SUCCESS)
-//         {
-//             NRF_LOG_INFO("TWI device detected at address 0x%x.", address);
-//         }
-
-// }
-
 
 /**@brief Application main function.
  */
@@ -305,28 +447,55 @@ int main(void)
     crimson_ble_init();
     rgb_led_init();
 
+    advertising_start();
     // Start execution.
     printf("\r\nUART started.\r\n");
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
-   
-    advertising_start();
-
-     int val = ICM20948_init();
+       
+    int val = ICM20948_init();
     if (val==0){
-        NRF_LOG_INFO("sensor OK");
+        printf("sensor OK \n");
     }
+
+    sdcard_init();
+    printf("yo\r\n");
+    calibrate();
+    
+    
+    Madgwick_init();
+    Madgwick_setfreq(10.0); // frequency is 10Hz
     
     // Enter main loop.
     while (1)
     {
         if (new_data_ready){
-        nrf_gpio_pin_clear(LED_G);
-        nrf_delay_ms(500);
-        ICM20948_read();
-        new_data_ready=false;
+            
+            angles[0]= getRoll();
+            angles[1]= getPitch();
+            angles[2]= getYaw();
+            // printf("gx: %f, gy: %f, gz: %f,  \n", _gx, _gy, _gz);
+            // printf("-10, %f,  %f, %f, %f,  %f, %f, 10\n", _gx, _gy, _gz, f_gx, f_gy, f_gz);
+            printf("Roll: %f , Pitch: %f , Yaw: %f \n ", angles[0], angles [1], angles[2]);
+           
+            process_position(angles[0], angles[1], angles[2]);
+            new_data_ready=false; 
         }
-        nrf_gpio_pin_set(LED_G);
+        // if (log_available){
+        //     if (previous_position == UP_POSITION){
+        //     sdcard_sensor_update_data( event_time, 1);
+        //     }
+        //     if (previous_position == DOWN_POSITION){
+        //     sdcard_sensor_update_data( event_time,  0);
+        //     }
+        //     log_available = false;
+        // }
+        
+        nrf_gpio_pin_clear(LED_R);
         nrf_delay_ms(500);
-        idle_state_handle();
+        nrf_gpio_pin_set(LED_R);
+        nrf_delay_ms(500);
+
+        // sdcard_sensor_update_data(event_time, event_type)
+        // idle_state_handle();
     }
 }

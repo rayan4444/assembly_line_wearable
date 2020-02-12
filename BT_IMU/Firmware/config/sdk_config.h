@@ -46,6 +46,17 @@
 #ifdef USE_APP_CONFIG
 #include "app_config.h"
 #endif
+// <h> Application 
+
+//==========================================================
+// <o> NRF_BLE_GQ_QUEUE_SIZE - Queue size for BLE GATT Queue module. 
+#ifndef NRF_BLE_GQ_QUEUE_SIZE
+#define NRF_BLE_GQ_QUEUE_SIZE 4
+#endif
+
+// </h> 
+//==========================================================
+
 // <h> Board Support 
 
 //==========================================================
@@ -68,6 +79,14 @@
 #ifndef BLE_ADVERTISING_ENABLED
 #define BLE_ADVERTISING_ENABLED 1
 #endif
+
+// <q> BLE_DB_DISCOVERY_ENABLED  - ble_db_discovery - Database discovery module
+ 
+
+#ifndef BLE_DB_DISCOVERY_ENABLED
+#define BLE_DB_DISCOVERY_ENABLED 1
+#endif
+
 
 // <q> BLE_DTM_ENABLED  - ble_dtm - Module for testing RF/PHY using DTM commands
  
@@ -104,6 +123,33 @@
 
 // </e>
 
+// <e> NRF_BLE_GQ_ENABLED - nrf_ble_gq - BLE GATT Queue Module
+//==========================================================
+#ifndef NRF_BLE_GQ_ENABLED
+#define NRF_BLE_GQ_ENABLED 1
+#endif
+// <o> NRF_BLE_GQ_DATAPOOL_ELEMENT_SIZE - Default size of a single element in the pool of memory objects. 
+#ifndef NRF_BLE_GQ_DATAPOOL_ELEMENT_SIZE
+#define NRF_BLE_GQ_DATAPOOL_ELEMENT_SIZE 20
+#endif
+
+// <o> NRF_BLE_GQ_DATAPOOL_ELEMENT_COUNT - Default number of elements in the pool of memory objects. 
+#ifndef NRF_BLE_GQ_DATAPOOL_ELEMENT_COUNT
+#define NRF_BLE_GQ_DATAPOOL_ELEMENT_COUNT 8
+#endif
+
+// <o> NRF_BLE_GQ_GATTC_WRITE_MAX_DATA_LEN - Maximal size of the data inside GATTC write request (in bytes). 
+#ifndef NRF_BLE_GQ_GATTC_WRITE_MAX_DATA_LEN
+#define NRF_BLE_GQ_GATTC_WRITE_MAX_DATA_LEN 16
+#endif
+
+// <o> NRF_BLE_GQ_GATTS_HVX_MAX_DATA_LEN - Maximal size of the data inside GATTC notification or indication request (in bytes). 
+#ifndef NRF_BLE_GQ_GATTS_HVX_MAX_DATA_LEN
+#define NRF_BLE_GQ_GATTS_HVX_MAX_DATA_LEN 16
+#endif
+
+// </e>
+
 // <q> NRF_BLE_GATT_ENABLED  - nrf_ble_gatt - GATT module
  
 
@@ -126,7 +172,7 @@
 // <e> PEER_MANAGER_ENABLED - peer_manager - Peer Manager
 //==========================================================
 #ifndef PEER_MANAGER_ENABLED
-#define PEER_MANAGER_ENABLED 0
+#define PEER_MANAGER_ENABLED 1
 #endif
 // <o> PM_MAX_REGISTRANTS - Number of event handlers that can be registered. 
 #ifndef PM_MAX_REGISTRANTS
@@ -210,7 +256,7 @@
 // <i>  This might be necessary for interoperability reasons, especially as peripheral.
 
 #ifndef PM_HANDLER_SEC_DELAY_MS
-#define PM_HANDLER_SEC_DELAY_MS 0
+#define PM_HANDLER_SEC_DELAY_MS 4000
 #endif
 
 // </e>
@@ -311,7 +357,7 @@
  
 
 #ifndef BLE_CTS_C_ENABLED
-#define BLE_CTS_C_ENABLED 0
+#define BLE_CTS_C_ENABLED 1
 #endif
 
 // <q> BLE_DIS_ENABLED  - ble_dis - Device Information Service
@@ -5455,7 +5501,7 @@
 // <3=> NRF_GPIO_PIN_PULLUP 
 
 #ifndef NRF_SPI_DRV_MISO_PULLUP_CFG
-#define NRF_SPI_DRV_MISO_PULLUP_CFG 1
+#define NRF_SPI_DRV_MISO_PULLUP_CFG 3
 #endif
 
 // <e> SPI0_ENABLED - Enable SPI0 instance
@@ -6545,7 +6591,7 @@
  
 
 #ifndef CRC16_ENABLED
-#define CRC16_ENABLED 0
+#define CRC16_ENABLED 1
 #endif
 
 // <q> CRC32_ENABLED  - crc32 - CRC32 calculation routines
@@ -6565,7 +6611,7 @@
 // <e> FDS_ENABLED - fds - Flash data storage module
 //==========================================================
 #ifndef FDS_ENABLED
-#define FDS_ENABLED 0
+#define FDS_ENABLED 1
 #endif
 // <h> Pages - Virtual page settings
 
@@ -7104,7 +7150,7 @@
 // <e> NRF_FSTORAGE_ENABLED - nrf_fstorage - Flash abstraction library
 //==========================================================
 #ifndef NRF_FSTORAGE_ENABLED
-#define NRF_FSTORAGE_ENABLED 0
+#define NRF_FSTORAGE_ENABLED 1
 #endif
 // <h> nrf_fstorage - Common settings
 
@@ -7282,7 +7328,7 @@
 // <e> NRF_QUEUE_ENABLED - nrf_queue - Queue module
 //==========================================================
 #ifndef NRF_QUEUE_ENABLED
-#define NRF_QUEUE_ENABLED 0
+#define NRF_QUEUE_ENABLED 1
 #endif
 // <q> NRF_QUEUE_CLI_CMDS  - Enable CLI commands specific to the module
  
@@ -11304,14 +11350,14 @@
 
 // <o> NRF_SDH_BLE_VS_UUID_COUNT - The number of vendor-specific UUIDs. 
 #ifndef NRF_SDH_BLE_VS_UUID_COUNT
-#define NRF_SDH_BLE_VS_UUID_COUNT 1
+#define NRF_SDH_BLE_VS_UUID_COUNT 2
 #endif
 
 // <q> NRF_SDH_BLE_SERVICE_CHANGED  - Include the Service Changed characteristic in the Attribute Table.
  
 
 #ifndef NRF_SDH_BLE_SERVICE_CHANGED
-#define NRF_SDH_BLE_SERVICE_CHANGED 0
+#define NRF_SDH_BLE_SERVICE_CHANGED 1
 #endif
 
 // </h> 

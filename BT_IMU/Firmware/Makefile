@@ -25,7 +25,9 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/timer/app_timer2.c \
   $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
+  $(SDK_ROOT)/components/libraries/crc16/crc16.c \
   $(SDK_ROOT)/components/libraries/timer/drv_rtc.c \
+  $(SDK_ROOT)/components/libraries/fds/fds.c \
   $(SDK_ROOT)/components/libraries/hardfault/hardfault_implementation.c \
   $(SDK_ROOT)/components/libraries/hardfault/nrf52/handler/hardfault_handler_gcc.c \
   $(SDK_ROOT)/components/libraries/util/nrf_assert.c \
@@ -35,6 +37,8 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/balloc/nrf_balloc.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
+   $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage.c \
+  $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage_sd.c \
   $(SDK_ROOT)/components/libraries/memobj/nrf_memobj.c \
   $(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
   $(SDK_ROOT)/components/libraries/ringbuf/nrf_ringbuf.c \
@@ -62,6 +66,11 @@ SRC_FILES += \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
+  $(SDK_ROOT)/components/ble/peer_manager/auth_status_tracker.c \
+  $(SDK_ROOT)/components/ble/peer_manager/gatt_cache_manager.c \
+  $(SDK_ROOT)/components/ble/peer_manager/gatts_cache_manager.c \
+  $(SDK_ROOT)/components/ble/peer_manager/id_manager.c \
+  $(SDK_ROOT)/components/ble/ble_db_discovery/ble_db_discovery.c \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
   $(SDK_ROOT)/components/ble/ble_link_ctx_manager/ble_link_ctx_manager.c \
@@ -70,7 +79,17 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/common/ble_srv_common.c \
   $(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \
   $(SDK_ROOT)/components/ble/nrf_ble_qwr/nrf_ble_qwr.c \
+  $(SDK_ROOT)/components/ble/nrf_ble_gq/nrf_ble_gq.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_data_storage.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_database.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_id.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_manager.c \
+  $(SDK_ROOT)/components/ble/peer_manager/peer_manager_handler.c \
+  $(SDK_ROOT)/components/ble/peer_manager/pm_buffer.c \
+  $(SDK_ROOT)/components/ble/peer_manager/security_dispatcher.c \
+  $(SDK_ROOT)/components/ble/peer_manager/security_manager.c \
   $(SDK_ROOT)/external/utf_converter/utf.c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_cts_c/ble_cts_c.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_lbs/ble_lbs.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
@@ -80,11 +99,12 @@ SRC_FILES += \
   $(SDK_ROOT)/external/fatfs/port/diskio_blkdev.c \
   $(SDK_ROOT)/components/libraries/block_dev/sdc/nrf_block_dev_sdc.c\
   $(SDK_ROOT)/components/libraries/sdcard/app_sdcard.c \
+  $(SDK_ROOT)/components/libraries/queue/nrf_queue.c\
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/crimson_ble.c\
   $(PROJ_DIR)/icm20948.c\
   $(PROJ_DIR)/crimson_sdcard.c\
-
+  $(PROJ_DIR)/MadgwickAHRS.c\
   
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -182,6 +202,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus \
   $(SDK_ROOT)/components/libraries/twi_mngr \
   $(SDK_ROOT)/components/ble/ble_services/ble_hids \
+  $(SDK_ROOT)/components/ble/ble_db_discovery \
+  $(SDK_ROOT)/components/ble/nrf_ble_gq \
   $(SDK_ROOT)/components/libraries/strerror \
   $(SDK_ROOT)/components/libraries/crc32 \
   $(SDK_ROOT)/components/nfc/ndef/connection_handover/ble_oob_advdata \
@@ -286,6 +308,8 @@ LDFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LDFLAGS += -Wl,--gc-sections
 # use newlib in nano version
 LDFLAGS += --specs=nano.specs
+#to print floats
+LDFLAGS += -u _printf_float
 
 nrf52832_xxaa: CFLAGS += -D__HEAP_SIZE=8192
 nrf52832_xxaa: CFLAGS += -D__STACK_SIZE=8192
