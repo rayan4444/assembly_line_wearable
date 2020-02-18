@@ -43,5 +43,29 @@ You can use the onboard J-link adapter of the NRF52 Development Kit to program y
 \* Optional
 >Make sure you power your Custom board from an external source. The VTG connection  from the Dev Kit does not power the board, it just detects the target voltage.
 
+## Directions of use
+* Power on or reset device: a pink LED will stay on until you connect and pair with a Bluetooth host (ex: your smartphone. you can use NRFconnect mobile app).
+* Once the device is connected and paired, the light will turn blue. 
+* Stand in a neutral position with the arm down. Press the button to calibrate the device: this will sync time and record gyro offsets. 
+* Once the device is calibrated, you can go a head and use it: it will log "up" and "down" events in the SD card. 
+
+## Feature implementation
+Already implemented:
+* BLE connection
+* Time sync
+* Reading sensor data
+* Processing sensor data (Madgwick filter) to determine orientation
+* Logging "up" (event type 1) and "down"  (event type 0) events with timestamp
+* Writing events to SD card
+* Reading battery ADC
+
+To be implemented:
+* Read SD card file over UART
+* Read SD card file over BLE
+* Monitor battery charging 
+* Battery level service over BLE
+
+Notes:
+* The device updates roll pitch and yaw angles with reference to earth gravity so you can create more event types by defining specific angle thresholds. 
 
 ## Errata

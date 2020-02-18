@@ -129,7 +129,7 @@ void sdcard_sensor_update_data(char *event_time, uint8_t event_type)
     }
     else
     {
-        printf("%ld bytes written.\r\n", bytes_written);
+        NRF_LOG_INFO("%ld bytes written.\r\n", bytes_written);
     }
 
     // flush cached information
