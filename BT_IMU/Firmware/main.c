@@ -75,9 +75,15 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "nrf_drv_saadc.h"
+
 #include "icm20948.h"
 #include "crimson_sdcard.h"
 #include "MadgwickAHRS.h"
+#include "nrf_calendar.h"
+
+extern uint32_t year, month, day, hour, minute, second;
+extern volatile bool time_synced; 
 
 #define ICM20948_ADDR 0x68
 
@@ -95,8 +101,11 @@ arm_position previous_position;
 
 volatile bool log_available= false; 
 volatile bool new_data_ready = false;
-volatile uint32_t count=0;
 volatile bool m_xfer_done;
+
+#define SAMPLES_IN_BUFFER 1
+static nrf_saadc_value_t m_buffer[SAMPLES_IN_BUFFER];
+
 #define TWI_INSTANCE_ID     0
 nrf_drv_twi_t m_twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 
@@ -164,6 +173,10 @@ bool calibrate(){
     //init position
     previous_position = OTHER_POSITION;
 
+    //calirate time
+    while (!time_synced); // wait for time to sync
+
+
     //clear LEDs
     nrf_delay_ms(1000);
     nrf_gpio_pin_set(LED_R);
@@ -207,7 +220,7 @@ void process_position(float  roll, float pitch, float yaw){
         new_position = DOWN_POSITION;
         // if the posiiton changed, log it 
             if (new_position != previous_position){
-                log_available = true;
+                log_available = true;                
                 printf("DOWN\n");
             }   
     } else {
@@ -283,6 +296,36 @@ static void application_timers_start(void)
     app_timer_start(imu_sample_timer_id, IMU_SAMPLE_TIMER_INTERVAL, NULL);
 }
 
+void saadc_callback(nrf_drv_saadc_evt_t const * p_event)
+{
+    if (p_event->type == NRF_DRV_SAADC_EVT_DONE)
+    {
+        ret_code_t err_code;
+
+        err_code = nrf_drv_saadc_buffer_convert(p_event->data.done.p_buffer, SAMPLES_IN_BUFFER);
+        APP_ERROR_CHECK(err_code);
+        
+        // NRF_LOG_INFO("%d\r\n", p_event->data.done.p_buffer[0]);
+        printf("%d\r\n", p_event->data.done.p_buffer[0]);
+
+    }
+}
+
+void saadc_init()
+{
+    ret_code_t err_code;
+    nrf_saadc_channel_config_t channel_config 
+        = NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_AIN6);
+
+    err_code = nrf_drv_saadc_init(NULL, saadc_callback);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrf_drv_saadc_channel_init(0, &channel_config);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrf_drv_saadc_buffer_convert(m_buffer, SAMPLES_IN_BUFFER);
+    APP_ERROR_CHECK(err_code);
+}
 
 /**
  * @brief TWI events handler.
@@ -440,14 +483,12 @@ int main(void)
     uart_init();
     log_init();
     timers_init();
-    application_timers_start();
     twi_init();
 
     power_management_init();
     crimson_ble_init();
     rgb_led_init();
 
-    advertising_start();
     // Start execution.
     printf("\r\nUART started.\r\n");
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
@@ -458,9 +499,11 @@ int main(void)
     }
 
     sdcard_init();
-    printf("yo\r\n");
+
+    nrf_cal_init();
+    saadc_init();
     calibrate();
-    
+    application_timers_start();
     
     Madgwick_init();
     Madgwick_setfreq(10.0); // frequency is 10Hz
@@ -473,29 +516,25 @@ int main(void)
             angles[0]= getRoll();
             angles[1]= getPitch();
             angles[2]= getYaw();
-            // printf("gx: %f, gy: %f, gz: %f,  \n", _gx, _gy, _gz);
-            // printf("-10, %f,  %f, %f, %f,  %f, %f, 10\n", _gx, _gy, _gz, f_gx, f_gy, f_gz);
-            printf("Roll: %f , Pitch: %f , Yaw: %f \n ", angles[0], angles [1], angles[2]);
+            
+            // printf("Roll: %f , Pitch: %f , Yaw: %f \n ", angles[0], angles [1], angles[2]);
            
             process_position(angles[0], angles[1], angles[2]);
             new_data_ready=false; 
         }
-        // if (log_available){
-        //     if (previous_position == UP_POSITION){
-        //     sdcard_sensor_update_data( event_time, 1);
-        //     }
-        //     if (previous_position == DOWN_POSITION){
-        //     sdcard_sensor_update_data( event_time,  0);
-        //     }
-        //     log_available = false;
-        // }
         
-        nrf_gpio_pin_clear(LED_R);
-        nrf_delay_ms(500);
-        nrf_gpio_pin_set(LED_R);
-        nrf_delay_ms(500);
-
-        // sdcard_sensor_update_data(event_time, event_type)
-        // idle_state_handle();
+        if (log_available){
+            if (previous_position == UP_POSITION){
+            sdcard_sensor_update_data( nrf_cal_get_time_string(false), 1);
+            }
+            if (previous_position == DOWN_POSITION){
+            sdcard_sensor_update_data( nrf_cal_get_time_string(false),  0);
+            }
+            log_available = false;
+        }
+        
+        // nrf_drv_saadc_sample();
+        // // printf("batt: %d \n", m_buffer[0]);
+        // nrf_delay_ms(10);
     }
 }

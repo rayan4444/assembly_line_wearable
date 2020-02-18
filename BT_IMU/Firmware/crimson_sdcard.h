@@ -19,14 +19,12 @@
 #include "nrf_log_default_backends.h"
 
 #define FILE_NAME   "CRIMSON.TXT"
-#define TEST_STRING "Sensor Data Logger Example.\r\n\n"
-#define TEST_STRING_2 "TEST.\r\n\n"
-
+#define TEST_STRING "Crimson event data\r\n\n"
 
 /**
  * @brief function to log data in SD card.
  */
 void sdcard_init();
-void sdcard_sensor_update_data(float event_time, uint8_t event_type);
+void sdcard_sensor_update_data(char * event_time, uint8_t event_type);
 
 #endif //SD_CARD_

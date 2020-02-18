@@ -18,9 +18,9 @@ extern "C" {
 
 #define LEDS_LIST { LED_R, LED_G, LED_B}
 
-#define BSP_LED_0      LED_R
+#define BSP_LED_0      LED_B
 #define BSP_LED_1      LED_G
-#define BSP_LED_2      LED_B
+#define BSP_LED_2      LED_R
 
 
 

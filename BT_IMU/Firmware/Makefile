@@ -60,6 +60,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uart.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_spim.c\
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_saadc.c\
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
   $(SDK_ROOT)/components/boards/boards.c \
@@ -105,7 +106,8 @@ SRC_FILES += \
   $(PROJ_DIR)/icm20948.c\
   $(PROJ_DIR)/crimson_sdcard.c\
   $(PROJ_DIR)/MadgwickAHRS.c\
-  
+  $(PROJ_DIR)/nrf_calendar.c\
+
 # Include folders common to all targets
 INC_FOLDERS += \
   $(PROJ_DIR)\
@@ -249,6 +251,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/external/protothreads\
   $(SDK_ROOT)/external/protothreads/pt-1.4\
   $(SDK_ROOT)/components/libraries/sdcard\
+  $(SDK_ROOT)/modules/nrfx/drivers/include\
+  $(SDK_ROOT)/integration/nrfx/legacy\
 
 # Libraries common to all targets
 LIB_FILES += \
